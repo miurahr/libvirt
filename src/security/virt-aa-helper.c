@@ -962,6 +962,16 @@ get_files(vahControl * ctl)
             goto cleanup;
     }
 
+    for (i = 0; i < ctl->def->nfss; i++)
+        if (ctl->def->fss[i] &&
+            ctl->def->fss[i]->type == VIR_DOMAIN_FS_TYPE_MOUNT &&
+            (ctl->def->fss[i]->fsdriver == VIR_DOMAIN_FS_DRIVER_TYPE_PATH ||
+             ctl->def->fss[i]->fsdriver == VIR_DOMAIN_FS_DRIVER_TYPE_DEFAULT) &&
+             ctl->def->fss[i]->src){
+                virBufferAsprintf(&buf, "   \"%s/\" rwk,\n", ctl->def->fss[i]->src);
+                virBufferAsprintf(&buf, "   \"%s/**\" lrwmk,\n", ctl->def->fss[i]->src);
+             }
+
     for (i = 0; i < ctl->def->nserials; i++)
         if (ctl->def->serials[i] &&
             (ctl->def->serials[i]->source.type == VIR_DOMAIN_CHR_TYPE_PTY ||
