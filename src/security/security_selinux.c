@@ -1272,6 +1272,33 @@ virSecuritySELinuxSetSecurityImageLabel(virSecurityManagerPtr mgr,
 }
 
 static int
+virSecuritySELinuxSetSecurityFileShareLabel(virSecurityManagerPtr mgr,
+                                            virDomainDefPtr def,
+                                            virDomainFSDefPtr fs)
+{
+    virSecuritySELinuxCallbackData cbdata;
+    cbdata.manager = mgr;
+    cbdata.secdef = virDomainDefGetSecurityLabelDef(def, SECURITY_SELINUX_NAME);
+
+    if (cbdata.secdef == NULL)
+        return -1;
+
+    if (cbdata.secdef->norelabel)
+        return 0;
+
+    if (fs->type == VIR_DOMAIN_FS_TYPE_MOUNT &&
+        (fs->fsdriver == VIR_DOMAIN_FS_DRIVER_TYPE_PATH ||
+         fs->fsdriver == VIR_DOMAIN_FS_DRIVER_TYPE_DEFAULT) && fs->src){
+            /* XXX need optional context label?
+               http://libvirt.org/drvqemu.html#securityselinux
+             */
+            return virSecuritySELinuxSetFilecon(fs->src,
+                                               cbdata.secdef->imagelabel);
+    }
+    return 0;
+}
+
+static int
 virSecuritySELinuxSetSecurityHostdevLabelHelper(const char *file, void *opaque)
 {
     virSecurityLabelDefPtr secdef;
@@ -2280,7 +2307,12 @@ virSecuritySELinuxSetSecurityAllLabel(virSecurityManagerPtr mgr,
                                          def, def->disks[i]) < 0)
             return -1;
     }
-    /* XXX fixme process  def->fss if relabel == true */
+
+    for (i = 0; i < def->nfss; i++){
+        if (virSecuritySELinuxSetSecurityFileShareLabel(mgr,
+                                        def, def->fss[i]) < 0)
+                return -1;
+    }
 
     for (i = 0; i < def->nhostdevs; i++) {
         if (virSecuritySELinuxSetSecurityHostdevLabel(mgr,
