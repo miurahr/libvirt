@@ -2276,6 +2276,17 @@ virSecuritySELinuxSetSecurityAllLabel(virSecurityManagerPtr mgr,
                      def->disks[i]->src, def->disks[i]->dst);
             continue;
         }
+
+        if (def->disks[i]->backingChain) {
+            /* Check disk image has backingChain image unless already checked */
+            /* XXX fixme - we need to see ctl->allowDiskFormatProbing */
+            bool probe = true;
+            def->disks[i]->backingChain = virStorageFileGetMetadata(
+                                        def->disks[i]->src,
+                                        def->disks[i]->format,
+                                        -1, -1, probe);
+        }
+
         if (virSecuritySELinuxSetSecurityImageLabel(mgr,
                                          def, def->disks[i]) < 0)
             return -1;
